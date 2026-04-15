@@ -8,34 +8,35 @@ coming".
 @author: pedro
 '''
 
-import tkinter
+from enum import Enum
 import random
 import time
+import tkinter
 
 import coordenadas
 import imagenes
 
-from enum import Enum
 
 class Estado(Enum):
     # Estados de la aplicación
     CRONO_INICIO = 1  # Cronometro parado.
     CRONO_AVANCE = 2  # Cronómetro descendiendo
-    CRONO_FIN = 3     # Cronómetro llega al fin
-    SORTEO_INICIO = 4 # Cajas en gris
+    SORTEO_INICIO = 4  # Cajas en gris
     SORTEO_ANIM = 5   # Animación del sorteo
     SORTEO_RESUL = 6  # Sorteo resuelto
 
+
 ventana = None
-tiempo_aminacion = 100
-tiempo_crono = 50
-crono_duracion = 10
-simetrico = True
+tiempo_aminacion = 100  # mseg
+tiempo_crono = 50  # mseg
+crono_duracion = 180  # segundos
+tiempo_inicio = 0
 font = ("Liberation Sans", 300, "bold")
+
 
 def teclado(evento):
     """ Función de atención a los eventos del teclado.
-    
+
     """
     global estado
     global sorteo
@@ -51,20 +52,12 @@ def teclado(evento):
             estado = Estado.SORTEO_INICIO
     elif estado == Estado.CRONO_AVANCE:
         if evento.char == 't':
-            pass
-        elif evento.char == ' ':
-            estado = Estado.CRONO_INICIO
-        elif evento.char == 'p':
-            pass
-    elif estado == Estado.CRONO_FIN:
-        if evento.char == 't':
             estado = Estado.CRONO_INICIO
         elif evento.char == ' ':
-            pass
+            return
         elif evento.char == 'p':
-            evento = Estado.SORTEO_INICIO
-            altarnar_pantallas(True)
-    
+            return
+
     elif estado == Estado.SORTEO_INICIO:
         if evento.char == 't':
             estado = Estado.CRONO_INICIO
@@ -100,45 +93,59 @@ def teclado(evento):
     elif estado == Estado.CRONO_INICIO:
         inicio_crono()
     elif estado == Estado.CRONO_AVANCE:
-        actualizar_crono()
         tiempo_inicio = time.time()
+        actualizar_crono()
+        # print("iniciar crono: ", tiempo_inicio)
     elif estado == Estado.CRONO_FIN:
         pass
     print(estado)
 
+
+def convertir_tiempo(tiempo):
+    segundos = tiempo % 60
+    minutos = tiempo // 60
+    return "%i:%02i" % (minutos, segundos)
+
+
 def inicio_crono():
     global etiqueta_crono
-    etiqueta_crono.config(text = "%s" % crono_duracion)
-    
+    global tiempo_inicio
+    tiempo = convertir_tiempo(crono_duracion)
+    etiqueta_crono.config(text="%s" % tiempo)
+
+
 def actualizar_crono():
     global etiqueta_crono
+    global tiempo_inicio
     if estado != Estado.CRONO_AVANCE:
         return
     tiempo_actual = time.time()
     restante = int(crono_duracion - (tiempo_actual - tiempo_inicio))
-    
-    if restante >= 0:
-        etiqueta_crono.config(text = "%s" % restante)
-        ventana.after(tiempo_crono, actualizar_crono)
-    else:
-        etiqueta_crono.config(text="0")
-    
+
+    if restante < 0:
+        restante = 0
+    tiempo = convertir_tiempo(restante)
+    etiqueta_crono.config(text="%s" % tiempo)
+    ventana.after(tiempo_crono, actualizar_crono)
+
+
 def iniciar_sorteo(sorteo):
-        sorteo["H4"] = {
-            0: 6,
-            1: 6,
-            2: 6,
-            3: 6}
-        sorteo["V4"] = {
-            0: 6,
-            1: 6,
-            2: 6,
-            3: 6}
-        sorteo["R2"] = {
-            0: 2,
-            1: 2,
-            2: 2,
-            3: 2}
+    sorteo["H4"] = {
+        0: 6,
+        1: 6,
+        2: 6,
+        3: 6}
+    sorteo["V4"] = {
+        0: 6,
+        1: 6,
+        2: 6,
+        3: 6}
+    sorteo["R2"] = {
+        0: 2,
+        1: 2,
+        2: 2,
+        3: 2}
+
 
 def borrar_sorteo(sorteo):
     global lista_escaladas
@@ -146,12 +153,13 @@ def borrar_sorteo(sorteo):
     iniciar_sorteo(sorteo)
     imagenes.mostrar_imagenes(lista_escaladas, lista_etiquetas, sorteo)
 
+
 def realizar_sorteo(evento=None):
     global lista_escaladas
     global lista_etiquetas
     global sorteo
     global estado
-    
+
     if evento is None:
         if estado == Estado.SORTEO_ANIM:
             ventana.after(tiempo_aminacion, realizar_sorteo)
@@ -162,7 +170,7 @@ def realizar_sorteo(evento=None):
     # 8 zonas de almacenaje, por 6 posibles combinaciones de colores
     # cada 1, por 4 refrigeradores por 2 combinaciones de colores cada una.
     valor = random.randint(1, 26873856)
-    
+
     for i in range(4):
         sorteo["H4"][i] = valor % 6
         valor = valor // 6
@@ -174,9 +182,10 @@ def realizar_sorteo(evento=None):
         valor = valor // 2
 
     # if simetrico:
-        
+
     imagenes.mostrar_imagenes(lista_escaladas, lista_etiquetas, sorteo)
-        
+
+
 def redimensionar(event):
     global ventana_ancho
     global ventana_alto
@@ -184,7 +193,7 @@ def redimensionar(event):
     global lista_escaladas
     global lista_etiquetas
     global sorteo
-    
+
     nuevo_ancho = event.width
     nuevo_alto = event.height
     # NOTA: Al redimensionar el evento, en primer lugar salta el evento con
@@ -192,15 +201,15 @@ def redimensionar(event):
     # ignorar estos eventos.
     if nuevo_ancho <= 1 or nuevo_alto <= 1:
         return
-    
+
     # Detectamos si se ha cambiado las dimensiones de la ventana.
     if ventana_ancho == nuevo_ancho and ventana_alto == nuevo_alto:
         return
-    
+
     # Actualizamos el nuevo ancho y alto de la ventana.
     ventana_ancho = nuevo_ancho
     ventana_alto = nuevo_alto
-    
+
     # Calculamos la escala para las imágenes, teniendo en cuenta que debemos
     # conservar la relación de aspecto.
     escala_x = ventana_ancho / coordenadas.img_ancho
@@ -212,10 +221,12 @@ def redimensionar(event):
     # salirse.
     fondo_ancho = int(coordenadas.img_ancho * escala)
     fondo_alto = int(coordenadas.img_alto * escala)
-    fondo_sorteo.config(width = fondo_ancho, height = fondo_alto)
-    imagenes.redimensionar_imagenes(lista_etiquetas["fondo"], lista_imagenes, lista_escaladas, escala)
+    fondo_sorteo.config(width=fondo_ancho, height=fondo_alto)
+    imagenes.redimensionar_imagenes(
+        lista_etiquetas["fondo"], lista_imagenes, lista_escaladas, escala)
     imagenes.mostrar_imagenes(lista_escaladas, lista_etiquetas, sorteo)
-    
+
+
 def altarnar_pantallas(sorteo):
     if sorteo:
         fondo_sorteo.pack(expand=True)
@@ -223,8 +234,9 @@ def altarnar_pantallas(sorteo):
     else:
         fondo_sorteo.pack_forget()
         fondo_crono.pack(fill=tkinter.BOTH, expand=True)
-        
-###############################################################################    
+
+
+###############################################################################
 # Dimensinoes de la ventana. Lo empleamos para detectar si se han cambiado las
 # dimensiones de la ventana principal.
 ventana_ancho = 0
@@ -252,7 +264,7 @@ fondo_aux.pack(fill=tkinter.BOTH, expand=True)
 fondo_sorteo = tkinter.Frame(fondo_aux, bg="green")
 fondo_sorteo.pack(expand=True)
 fondo_sorteo.pack_propagate(False)
-fondo_crono =tkinter.Frame(fondo_aux, bg="blue")
+fondo_crono = tkinter.Frame(fondo_aux)
 fondo_crono.pack_propagate(False)
 etiqueta_crono = tkinter.Label(fondo_crono, font=font)
 etiqueta_crono.pack(expand=True)
@@ -261,14 +273,14 @@ etiqueta_crono.pack(expand=True)
 
 # Abrimos las imágenes en sus tamaños originales.
 lista_imagenes = {
-    "fondo": None, # Imagen del fondo.
+    "fondo": None,  # Imagen del fondo.
     "H": {},       # Patrones de zona carga en horizontal.
     "V": {},       # Patrones de zona carga en vertical.
     "R": {}}       # Patrones del refrigerador.
 imagenes.abrir_imagenes(lista_imagenes)
 # Lista de imágenes escaladas
 lista_escaladas = {
-    "fondo": None, # Imagen del fondo.
+    "fondo": None,  # Imagen del fondo.
     "H": {},       # Patrones de zona carga en horizontal.
     "V": {},       # Patrones de zona carga en vertical.
     "R": {}}       # Patrones del refrigerador.
