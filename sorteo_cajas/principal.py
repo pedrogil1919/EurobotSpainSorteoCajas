@@ -98,7 +98,6 @@ def teclado(evento):
         # print("iniciar crono: ", tiempo_inicio)
     elif estado == Estado.CRONO_FIN:
         pass
-    print(estado)
 
 
 def convertir_tiempo(tiempo):
